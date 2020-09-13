@@ -1,20 +1,92 @@
 #import "ImagePickerControllerPlugin.h"
+#import "TZImagePickerController.h"
+
+static NSString *kPickImageMethod = @"pickImage";
+
+@interface ImagePickerControllerPlugin() <TZImagePickerControllerDelegate>
+
+@property(nonatomic, copy) FlutterResult flutterResult;
+
+@end
+
 
 @implementation ImagePickerControllerPlugin
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
-  FlutterMethodChannel* channel = [FlutterMethodChannel
-      methodChannelWithName:@"image_picker_controller"
-            binaryMessenger:[registrar messenger]];
-  ImagePickerControllerPlugin* instance = [[ImagePickerControllerPlugin alloc] init];
-  [registrar addMethodCallDelegate:instance channel:channel];
+    FlutterMethodChannel* channel = [FlutterMethodChannel
+                                     methodChannelWithName:@"image_picker_controller"
+                                     binaryMessenger:[registrar messenger]];
+    ImagePickerControllerPlugin* instance = [[ImagePickerControllerPlugin alloc] init];
+    [registrar addMethodCallDelegate:instance channel:channel];
 }
 
 - (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
-  if ([@"getPlatformVersion" isEqualToString:call.method]) {
-    result([@"iOS " stringByAppendingString:[[UIDevice currentDevice] systemVersion]]);
-  } else {
-    result(FlutterMethodNotImplemented);
-  }
+    self.flutterResult = result;
+    if ([kPickImageMethod isEqualToString:call.method]) {
+        [self pickImages:call];
+    } else {
+        result(FlutterMethodNotImplemented);
+    }
+}
+
+- (void)pickImages:(FlutterMethodCall *)call {
+    int maxImageCount = 1;
+    if (call.arguments != nil && call.arguments[@"maxImageCount"] != nil) {
+        maxImageCount = [call.arguments[@"maxImageCount"] intValue];
+    }
+    
+    TZImagePickerController *imagePickerVC = [[TZImagePickerController alloc] initWithMaxImagesCount:maxImageCount delegate:self];
+    
+    if (@available(iOS 13.0, *)) {
+        imagePickerVC.modalInPresentation = true;
+    }
+    imagePickerVC.modalPresentationStyle = UIModalPresentationFullScreen;
+    UIViewController *topVC = [self topViewController:nil];
+    [topVC presentViewController:imagePickerVC animated:true completion:nil];
+}
+
+- (void)imagePickerController:(TZImagePickerController *)picker didFinishPickingPhotos:(NSArray<UIImage *> *)photos sourceAssets:(NSArray *)assets isSelectOriginalPhoto:(BOOL)isSelectOriginalPhoto {
+    NSMutableArray<NSString *> *filePathArray = [NSMutableArray array];
+    for (UIImage *image in photos) {
+        NSString *path = [self saveImage:image];
+        [filePathArray addObject: path];
+    }
+    self.flutterResult(filePathArray);
+}
+
+- (void)imagePickerController:(TZImagePickerController *)picker didFinishPickingVideo:(UIImage *)coverImage sourceAssets:(PHAsset *)asset {
+    [[TZImageManager manager] getVideoOutputPathWithAsset:asset presetName:AVAssetExportPresetLowQuality success:^(NSString *outputPath) {
+        NSLog(@"视频导出到本地已完成：%@", outputPath);
+        self.flutterResult(@[outputPath]);
+    } failure:^(NSString *errorMessage, NSError *error) {
+        NSLog(@"视频导出到本地失败：%@, %@", errorMessage, error);
+    }];
+}
+
+- (NSString *)saveImage:(UIImage *)image {
+    NSData *data = UIImagePNGRepresentation(image);
+    NSDateFormatter *formater = [[NSDateFormatter alloc] init];
+    [formater setDateFormat:@"yyyy-MM-dd-HH:mm:ss-SSS"];
+    NSString *outputPath = [NSHomeDirectory() stringByAppendingFormat:@"/tmp/image-%@.jpg", [formater stringFromDate:[NSDate date]]];
+
+    if (![[NSFileManager defaultManager] fileExistsAtPath:[NSHomeDirectory() stringByAppendingFormat:@"/tmp"]]) {
+        [[NSFileManager defaultManager] createDirectoryAtPath:[NSHomeDirectory() stringByAppendingFormat:@"/tmp"] withIntermediateDirectories:YES attributes:nil error:nil];
+    }
+    bool result = [data writeToFile:outputPath atomically:true];
+    if (result) {
+        return  outputPath;
+    } else {
+        return nil;
+    }
+}
+
+- (UIViewController *)topViewController:(UIViewController *)base {
+    if (!base) {
+        base = [UIApplication sharedApplication].keyWindow.rootViewController;
+    }
+    if (base.presentedViewController) {
+        return [self topViewController:base.presentedViewController];
+    }
+    return base;
 }
 
 @end
