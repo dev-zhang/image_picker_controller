@@ -276,10 +276,33 @@ public class ImagePickerDelegate
   }
 
   private void launchPickVideoFromGalleryIntent() {
-    Intent pickVideoIntent = new Intent(Intent.ACTION_GET_CONTENT);
-    pickVideoIntent.setType("video/*");
+//    Intent pickVideoIntent = new Intent(Intent.ACTION_GET_CONTENT);
+//    pickVideoIntent.setType("video/*");
+//
+//    activity.startActivityForResult(pickVideoIntent, REQUEST_CODE_CHOOSE_VIDEO_FROM_GALLERY);
 
-    activity.startActivityForResult(pickVideoIntent, REQUEST_CODE_CHOOSE_VIDEO_FROM_GALLERY);
+
+    int maxImageCount = 1;
+    long videoMaxDuration = 0;
+    if (methodCall != null && methodCall.argument("videoMaxDuration") != null) {
+      final int duration = methodCall.argument("videoMaxDuration");
+      videoMaxDuration = (int)duration;
+//      videoMaxDuration = methodCall.argument("videoMaxDuration");
+    }
+
+    Matisse.from(activity)
+            .choose(MimeType.ofVideo())
+            .countable(true)
+            .maxSelectable(maxImageCount)
+            .addFilter(new VideoDurationFilter(videoMaxDuration))
+//            .gridExpectedSize(getResources().getDimensionPixelSize(R.dimen.grid_expected_size))
+//            .restrictOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED)
+            .thumbnailScale(0.85f)
+            .imageEngine(new GlideEngine())
+//            .capture(true)
+//            .captureStrategy(new CaptureStrategy(true, "com.xiamijun.image_picker_controller_example.flutter.image_provider"))
+            .showPreview(true)
+            .forResult(REQUEST_CODE_CHOOSE_VIDEO_FROM_GALLERY);
   }
 
   public void takeVideoWithCamera(MethodCall methodCall, MethodChannel.Result result) {
@@ -531,8 +554,13 @@ public class ImagePickerDelegate
 
   private void handleChooseVideoResult(int resultCode, Intent data) {
     if (resultCode == Activity.RESULT_OK && data != null) {
-      String path = fileUtils.getPathFromUri(activity, data.getData());
-      handleVideoResult(path);
+//      String path = fileUtils.getPathFromUri(activity, data.getData());
+//      handleVideoResult(path);
+
+
+      List<String> paths = Matisse.obtainPathResult(data);
+      Log.i("===choose video result", "==========paths: " + paths);
+      handleVideoResult(paths.get(0));
       return;
     }
 

@@ -24,16 +24,32 @@ class _MyAppState extends State<MyApp> {
           title: const Text('Plugin example app'),
         ),
         body: Center(
-          child: FlatButton.icon(
-            onPressed: () {
-              ImagePickerController.pickImages(
-                configuration: ImagePickerConfiguration(
-                  maxImagesCount: 3,
-                ),
-              );
-            },
-            icon: Icon(Icons.add_a_photo),
-            label: Text('pick image'),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              FlatButton.icon(
+                onPressed: () {
+                  ImagePickerController.pickImages(
+                    configuration: ImagePickerConfiguration(
+                      maxImagesCount: 3,
+                      allowPickingVideo: false,
+                    ),
+                  );
+                },
+                icon: Icon(Icons.add_a_photo),
+                label: Text('pick image'),
+              ),
+              FlatButton.icon(
+                onPressed: () {
+                  ImagePickerController.pickVideo(
+                    maxDuration: 16,
+                    allowTakeVideo: false,
+                  );
+                },
+                icon: Icon(Icons.featured_video),
+                label: Text('pick video'),
+              ),
+            ],
           ),
         ),
       ),

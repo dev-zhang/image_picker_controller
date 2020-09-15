@@ -304,7 +304,8 @@ public class ImagePickerControllerPlugin
         }
         break;
       case METHOD_CALL_VIDEO:
-        imageSource = call.argument("source");
+//        imageSource = call.argument("source");
+        imageSource = 1;
         switch (imageSource) {
           case SOURCE_GALLERY:
             delegate.chooseVideoFromGallery(call, result);

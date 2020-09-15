@@ -2,10 +2,12 @@
 #import "TZImagePickerController.h"
 
 static NSString *kPickImageMethod = @"pickImage";
+static NSString *kPickVideoMethod = @"pickVideo";
 
 @interface ImagePickerControllerPlugin() <TZImagePickerControllerDelegate>
 
 @property(nonatomic, copy) FlutterResult flutterResult;
+@property(nonatomic, assign) NSTimeInterval videoMaxDuration;
 
 @end
 
@@ -23,6 +25,8 @@ static NSString *kPickImageMethod = @"pickImage";
     self.flutterResult = result;
     if ([kPickImageMethod isEqualToString:call.method]) {
         [self pickImages:call];
+    } else if ([kPickVideoMethod isEqualToString:call.method]) {
+        [self pickVideo:call];
     } else {
         result(FlutterMethodNotImplemented);
     }
@@ -35,6 +39,8 @@ static NSString *kPickImageMethod = @"pickImage";
     }
     
     TZImagePickerController *imagePickerVC = [[TZImagePickerController alloc] initWithMaxImagesCount:maxImageCount delegate:self];
+    imagePickerVC.allowPickingVideo = false;
+    imagePickerVC.allowTakeVideo = false;
     
     if (@available(iOS 13.0, *)) {
         imagePickerVC.modalInPresentation = true;
@@ -42,6 +48,46 @@ static NSString *kPickImageMethod = @"pickImage";
     imagePickerVC.modalPresentationStyle = UIModalPresentationFullScreen;
     UIViewController *topVC = [self topViewController:nil];
     [topVC presentViewController:imagePickerVC animated:true completion:nil];
+}
+
+
+- (void)pickVideo:(FlutterMethodCall *)call {
+    int maxImageCount = 1;
+    NSTimeInterval videoMaxDuration = 10 * 60;
+    if (call.arguments != nil && call.arguments[@"videoMaxDuration"] != nil) {
+        videoMaxDuration = [call.arguments[@"videoMaxDuration"] doubleValue];
+    }
+    self.videoMaxDuration = videoMaxDuration;
+    
+    BOOL allowTakeVideo = true;
+    if (call.arguments != nil && call.arguments[@"allowTakePicture"] != nil) {
+        allowTakeVideo = [call.arguments[@"allowTakePicture"] boolValue];
+    }
+
+    
+    TZImagePickerController *imagePickerVC = [[TZImagePickerController alloc] initWithMaxImagesCount:maxImageCount delegate:self];
+    imagePickerVC.videoMaximumDuration = videoMaxDuration;
+    imagePickerVC.allowPickingImage = false;
+    imagePickerVC.allowTakeVideo = allowTakeVideo;
+    imagePickerVC.allowPickingVideo = true;
+    
+    if (@available(iOS 13.0, *)) {
+        imagePickerVC.modalInPresentation = true;
+    }
+    imagePickerVC.modalPresentationStyle = UIModalPresentationFullScreen;
+    UIViewController *topVC = [self topViewController:nil];
+    [topVC presentViewController:imagePickerVC animated:true completion:nil];
+}
+
+- (BOOL)isAssetCanSelect:(PHAsset *)asset {
+    if (asset.mediaType != PHAssetMediaTypeVideo) {
+        return true;
+    }
+    // 根据视频时长，过滤视频资源
+    if (self.videoMaxDuration != 0 && asset.duration > self.videoMaxDuration) {
+        return false;
+    }
+    return true;
 }
 
 - (void)imagePickerController:(TZImagePickerController *)picker didFinishPickingPhotos:(NSArray<UIImage *> *)photos sourceAssets:(NSArray *)assets isSelectOriginalPhoto:(BOOL)isSelectOriginalPhoto {
@@ -56,7 +102,7 @@ static NSString *kPickImageMethod = @"pickImage";
 - (void)imagePickerController:(TZImagePickerController *)picker didFinishPickingVideo:(UIImage *)coverImage sourceAssets:(PHAsset *)asset {
     [[TZImageManager manager] getVideoOutputPathWithAsset:asset presetName:AVAssetExportPresetLowQuality success:^(NSString *outputPath) {
         NSLog(@"视频导出到本地已完成：%@", outputPath);
-        self.flutterResult(@[outputPath]);
+        self.flutterResult(outputPath);
     } failure:^(NSString *errorMessage, NSError *error) {
         NSLog(@"视频导出到本地失败：%@, %@", errorMessage, error);
     }];
