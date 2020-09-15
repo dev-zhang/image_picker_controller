@@ -1,8 +1,8 @@
 name: image_picker_controller
-description: A new flutter plugin project.
-version: 0.0.1
-author:
-homepage:
+description: 一个用于iOS、Android平台的相册选择器。iOS平台依赖于`TZImagePickerController`，Android平台依赖于`Matisse`。
+version: 0.0.1+1
+author: ZhangYu
+homepage: https://github.com/dev-zhang/image_picker_controller
 
 environment:
   sdk: ">=2.7.0 <3.0.0"
