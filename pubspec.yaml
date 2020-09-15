@@ -1,6 +1,6 @@
 name: image_picker_controller
-description: 一个用于iOS、Android平台的相册选择器。iOS平台依赖于`TZImagePickerController`，Android平台依赖于`Matisse`。
-version: 0.0.1+1
+description: An album selector for iOS and Android platforms. The iOS platform depends on TZImagePickerController, and the Android platform depends on Matisse.
+version: 0.0.1+2
 author: ZhangYu
 homepage: https://github.com/dev-zhang/image_picker_controller
 
