@@ -70,6 +70,10 @@ static NSString *kPickVideoMethod = @"pickVideo";
     imagePickerVC.allowPickingImage = false;
     imagePickerVC.allowTakeVideo = allowTakeVideo;
     imagePickerVC.allowPickingVideo = true;
+    [imagePickerVC setUiImagePickerControllerSettingBlock:^(UIImagePickerController *imagePickerController) {
+        // 视频拍摄的质量
+        imagePickerController.videoQuality = UIImagePickerControllerQualityTypeHigh;
+    }];
     
     if (@available(iOS 13.0, *)) {
         imagePickerVC.modalInPresentation = true;
@@ -100,7 +104,7 @@ static NSString *kPickVideoMethod = @"pickVideo";
 }
 
 - (void)imagePickerController:(TZImagePickerController *)picker didFinishPickingVideo:(UIImage *)coverImage sourceAssets:(PHAsset *)asset {
-    [[TZImageManager manager] getVideoOutputPathWithAsset:asset presetName:AVAssetExportPresetLowQuality success:^(NSString *outputPath) {
+    [[TZImageManager manager] getVideoOutputPathWithAsset:asset presetName:AVAssetExportPresetHighestQuality success:^(NSString *outputPath) {
         NSLog(@"视频导出到本地已完成：%@", outputPath);
         self.flutterResult(outputPath);
     } failure:^(NSString *errorMessage, NSError *error) {
