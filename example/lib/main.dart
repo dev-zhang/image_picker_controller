@@ -40,14 +40,22 @@ class _MyAppState extends State<MyApp> {
                 label: Text('pick image'),
               ),
               FlatButton.icon(
-                onPressed: () {
-                  ImagePickerController.pickVideo(
+                onPressed: () async {
+                  final model = await ImagePickerController.pickVideo(
                     maxDuration: 16,
                     allowTakeVideo: false,
                   );
+                  print('pick video: $model');
                 },
                 icon: Icon(Icons.featured_video),
                 label: Text('pick video'),
+              ),
+              FlatButton.icon(
+                onPressed: () {
+                  ImagePickerController.takeImage();
+                },
+                icon: Icon(Icons.image),
+                label: Text('take image'),
               ),
             ],
           ),

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:image_picker_controller/src/image_picker_configuration.dart';
+import 'package:image_picker_controller/src/video_asset_model.dart';
 
 class ImagePickerController {
   static const String _channelName = 'com.xiamijun.image_picker_controller';
@@ -25,13 +26,11 @@ class ImagePickerController {
       _pickImageMethod,
       configuration.toJson(),
     );
-    print(
-        '=====ImagePickerController==invoke list method: ${filePaths.runtimeType}');
     return filePaths;
   }
 
   /// 相册选择视频
-  static Future<String> pickVideo({
+  static Future<VideoAssetModel> pickVideo({
     int maxDuration = 10 * 60,
     bool allowTakeVideo = true,
   }) async {
@@ -43,12 +42,14 @@ class ImagePickerController {
       ..videoMaxDuration = maxDuration
       ..maxImagesCount = 1;
 
-    final filePath = await _channel.invokeMethod<String>(
+    final result = await _channel.invokeMethod<Map>(
       _pickVideoMethod,
       configuration.toJson(),
     );
-    print('=====ImagePickerController==invoke method: ${filePath.runtimeType}');
-    return filePath;
+    if (result == null) {
+      return null;
+    }
+    return VideoAssetModel.fromJson(result.cast<String, dynamic>());
   }
 
   /// 选择单个图片
