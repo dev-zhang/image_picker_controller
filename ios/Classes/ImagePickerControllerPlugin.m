@@ -3,11 +3,16 @@
 
 static NSString *kPickImageMethod = @"pickImage";
 static NSString *kPickVideoMethod = @"pickVideo";
+// 选择单个图片
+static NSString *kPickSingleImageMethod = @"pick_single_image";
+// 拍摄图片
+static NSString *kTakeImageMethod = @"take_image";
 
 @interface ImagePickerControllerPlugin() <TZImagePickerControllerDelegate>
 
 @property(nonatomic, copy) FlutterResult flutterResult;
 @property(nonatomic, assign) NSTimeInterval videoMaxDuration;
+@property(nonatomic, assign) BOOL isSinglePickMode;
 
 @end
 
@@ -15,7 +20,7 @@ static NSString *kPickVideoMethod = @"pickVideo";
 @implementation ImagePickerControllerPlugin
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
     FlutterMethodChannel* channel = [FlutterMethodChannel
-                                     methodChannelWithName:@"image_picker_controller"
+                                     methodChannelWithName:@"com.xiamijun.image_picker_controller"
                                      binaryMessenger:[registrar messenger]];
     ImagePickerControllerPlugin* instance = [[ImagePickerControllerPlugin alloc] init];
     [registrar addMethodCallDelegate:instance channel:channel];
@@ -23,10 +28,15 @@ static NSString *kPickVideoMethod = @"pickVideo";
 
 - (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
     self.flutterResult = result;
+    self.isSinglePickMode = false;
     if ([kPickImageMethod isEqualToString:call.method]) {
         [self pickImages:call];
     } else if ([kPickVideoMethod isEqualToString:call.method]) {
         [self pickVideo:call];
+    } else if ([kPickSingleImageMethod isEqualToString:call.method]) {
+        // 选择单个图片
+        self.isSinglePickMode = true;
+        [self pickImages:call];
     } else {
         result(FlutterMethodNotImplemented);
     }
@@ -41,6 +51,13 @@ static NSString *kPickVideoMethod = @"pickVideo";
     TZImagePickerController *imagePickerVC = [[TZImagePickerController alloc] initWithMaxImagesCount:maxImageCount delegate:self];
     imagePickerVC.allowPickingVideo = false;
     imagePickerVC.allowTakeVideo = false;
+    
+    BOOL allowCrop = false;
+    if (call.arguments != nil && call.arguments[@"allowCrop"] != nil) {
+        allowCrop = [call.arguments[@"allowCrop"] boolValue];
+    }
+    
+    imagePickerVC.allowCrop = allowCrop;
     
     if (@available(iOS 13.0, *)) {
         imagePickerVC.modalInPresentation = true;
@@ -63,7 +80,7 @@ static NSString *kPickVideoMethod = @"pickVideo";
     if (call.arguments != nil && call.arguments[@"allowTakePicture"] != nil) {
         allowTakeVideo = [call.arguments[@"allowTakePicture"] boolValue];
     }
-
+    
     
     TZImagePickerController *imagePickerVC = [[TZImagePickerController alloc] initWithMaxImagesCount:maxImageCount delegate:self];
     imagePickerVC.videoMaximumDuration = videoMaxDuration;
@@ -96,11 +113,41 @@ static NSString *kPickVideoMethod = @"pickVideo";
 
 - (void)imagePickerController:(TZImagePickerController *)picker didFinishPickingPhotos:(NSArray<UIImage *> *)photos sourceAssets:(NSArray *)assets isSelectOriginalPhoto:(BOOL)isSelectOriginalPhoto {
     NSMutableArray<NSString *> *filePathArray = [NSMutableArray array];
-    for (UIImage *image in photos) {
-        NSString *path = [self saveImage:image];
-        [filePathArray addObject: path];
+    if (isSelectOriginalPhoto) {
+        // 原图
+        dispatch_group_t group = dispatch_group_create();
+        for (int i = 0; i < assets.count; i++) {
+            [filePathArray addObject:@""];
+            dispatch_group_enter(group);
+            [[TZImageManager manager] getOriginalPhotoWithAsset:assets[i] newCompletion:^(UIImage *photo, NSDictionary *info, BOOL isDegraded) {
+                if (!isDegraded) {
+                    // 原图
+                    NSString *path = [self saveImage:photo];
+                    // 修复顺序问题
+                    //                    [filePathArray addObject:path];
+                    filePathArray[i] = path;
+                    dispatch_group_leave(group);
+                }
+            }];
+        }
+        dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+            if (self.isSinglePickMode) {
+                self.flutterResult(filePathArray.firstObject);
+            } else {            
+                self.flutterResult(filePathArray);
+            }
+        });
+    } else {
+        for (UIImage *image in photos) {
+            NSString *path = [self saveImage:image];
+            [filePathArray addObject: path];
+        }
+        if (self.isSinglePickMode) {
+            self.flutterResult(filePathArray.firstObject);
+        } else {
+            self.flutterResult(filePathArray);
+        }
     }
-    self.flutterResult(filePathArray);
 }
 
 - (void)imagePickerController:(TZImagePickerController *)picker didFinishPickingVideo:(UIImage *)coverImage sourceAssets:(PHAsset *)asset {
@@ -115,9 +162,9 @@ static NSString *kPickVideoMethod = @"pickVideo";
 - (NSString *)saveImage:(UIImage *)image {
     NSData *data = UIImagePNGRepresentation(image);
     NSDateFormatter *formater = [[NSDateFormatter alloc] init];
-    [formater setDateFormat:@"yyyy-MM-dd-HH:mm:ss-SSS"];
+    [formater setDateFormat:@"yyyy-MM-dd-HH-mm-ss-SSS"];
     NSString *outputPath = [NSHomeDirectory() stringByAppendingFormat:@"/tmp/image-%@.jpg", [formater stringFromDate:[NSDate date]]];
-
+    
     if (![[NSFileManager defaultManager] fileExistsAtPath:[NSHomeDirectory() stringByAppendingFormat:@"/tmp"]]) {
         [[NSFileManager defaultManager] createDirectoryAtPath:[NSHomeDirectory() stringByAppendingFormat:@"/tmp"] withIntermediateDirectories:YES attributes:nil error:nil];
     }

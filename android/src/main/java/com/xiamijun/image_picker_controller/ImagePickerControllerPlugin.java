@@ -93,10 +93,14 @@ public class ImagePickerControllerPlugin
 
   static final String METHOD_CALL_IMAGE = "pickImage";
   static final String METHOD_CALL_VIDEO = "pickVideo";
+  // 拍摄照片
+  static final String METHOD_CALL_TAKE_IMAGE = "take_image";
+  // 选择单个图片
+  static final String METHOD_CALL_PICK_SINGLE_IMAGE = "pick_single_image";
   private static final String METHOD_CALL_RETRIEVE = "retrieve";
   private static final int CAMERA_DEVICE_FRONT = 1;
   private static final int CAMERA_DEVICE_REAR = 0;
-  private static final String CHANNEL = "image_picker_controller";
+  private static final String CHANNEL = "com.xiamijun.image_picker_controller";
 
   private static final int SOURCE_CAMERA = 0;
   private static final int SOURCE_GALLERY = 1;

@@ -6,12 +6,14 @@ class ImagePickerConfiguration {
     this.allowPickingImage = true,
     this.allowTakePicture = true,
     this.videoMaxDuration = 10 * 60,
+    this.allowCrop = false,
   })  : assert(maxImagesCount != null),
         assert(allowPickingImage != null),
         assert(allowPickingOriginalPhoto != null),
         assert(allowPickingVideo != null),
         assert(allowTakePicture != null),
-        assert(videoMaxDuration != null);
+        assert(videoMaxDuration != null),
+        assert(allowCrop != null);
 
   /// Default is 9 / 默认最大可选9张图片
   int maxImagesCount;
@@ -39,6 +41,10 @@ class ImagePickerConfiguration {
   /// Default value is 10 minutes / 视频最大拍摄时间，默认是10分钟，单位是秒
   int videoMaxDuration;
 
+  /// 以下参数适用于单选模式，仅在maxImagesCount为1时才生效
+  /// 是否允许裁剪，默认为false
+  bool allowCrop;
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       'maxImageCount': maxImagesCount,
@@ -48,6 +54,7 @@ class ImagePickerConfiguration {
       'allowPickingOriginalPhoto': allowPickingOriginalPhoto,
       'allowPickingVideo': allowPickingVideo,
       'allowPickingImage': allowPickingImage,
+      'allowCrop': allowCrop,
     };
   }
 }
