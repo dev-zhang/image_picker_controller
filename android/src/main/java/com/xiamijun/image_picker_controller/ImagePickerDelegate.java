@@ -9,12 +9,10 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
-import android.graphics.Bitmap;
 import android.hardware.camera2.CameraCharacteristics;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Build;
-import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Log;
 
@@ -22,17 +20,19 @@ import androidx.annotation.VisibleForTesting;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.FileProvider;
 
-import com.zhihu.matisse.Matisse;
-import com.zhihu.matisse.MimeType;
-import com.zhihu.matisse.engine.impl.GlideEngine;
+import com.bumptech.glide.Glide;
+import com.luck.picture.lib.PictureSelector;
+import com.luck.picture.lib.config.PictureConfig;
+import com.luck.picture.lib.config.PictureMimeType;
+import com.luck.picture.lib.entity.LocalMedia;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 import io.flutter.plugin.common.MethodCall;
@@ -104,11 +104,6 @@ public class ImagePickerDelegate
   @VisibleForTesting
   static final int REQUEST_CAMERA_VIDEO_PERMISSION = 2355;
 
-  // 单选照片
-  @VisibleForTesting
-  static final int REQUEST_CODE_CHOOSE_SINGLE_IMAGE_FROM_GALLERY = 2356;
-  // 剪切图片
-  private static final int PICTURE_CROP_CODE = 3000;
 
   @VisibleForTesting
   final String fileProviderName;
@@ -122,10 +117,6 @@ public class ImagePickerDelegate
   private final FileUriResolver fileUriResolver;
   private final FileUtils fileUtils;
   private CameraDevice cameraDevice;
-
-  // 图片的保存文件的名字
-  private String fileName = "";
-  private Uri outImageUri;
 
   interface PermissionManager {
     boolean isPermissionGranted(String permissionName);
@@ -305,26 +296,29 @@ public class ImagePickerDelegate
 //    activity.startActivityForResult(pickVideoIntent, REQUEST_CODE_CHOOSE_VIDEO_FROM_GALLERY);
 
 
-    int maxImageCount = 1;
-    long videoMaxDuration = 0;
-    if (methodCall != null && methodCall.argument("videoMaxDuration") != null) {
-      final int duration = methodCall.argument("videoMaxDuration");
-      videoMaxDuration = (int)duration;
-//      videoMaxDuration = methodCall.argument("videoMaxDuration");
-    }
-
-    Matisse.from(activity)
-            .choose(MimeType.ofVideo())
-            .countable(true)
-            .maxSelectable(maxImageCount)
-            .addFilter(new VideoDurationFilter(videoMaxDuration))
-//            .gridExpectedSize(getResources().getDimensionPixelSize(R.dimen.grid_expected_size))
-//            .restrictOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED)
-            .thumbnailScale(0.85f)
-            .imageEngine(new GlideEngine())
-//            .capture(true)
-//            .captureStrategy(new CaptureStrategy(true, "com.xiamijun.image_picker_controller_example.flutter.image_provider"))
-            .showPreview(true)
+    PickerConfiguration config = PickerConfiguration.fromMap((Map) methodCall.arguments());
+//    Log.d("config===", "===" + config);
+    PictureSelector.create(activity)
+            .openGallery(PictureMimeType.ofVideo())
+            .imageEngine(GlideEngine.createGlideEngine())
+            .isGif(false) // 是否显示GIF图片
+            .isAndroidQTransform(true) // 是否需要处理Android Q 拷贝至应用沙盒的操作，只针对compress(false); && .isEnableCrop(false);有效,默认处理
+            .maxSelectNum(config.maxImageCount) // 最大图片选择数量
+            .isOriginalImageControl(config.allowPickingOriginalPhoto) // 是否显示原图控制按钮，如果设置为true则用户可以自由选择是否使用原图，压缩、裁剪功能将会失效
+            .isCamera(config.allowTakeVideo) // 是否显示拍照按钮
+            .isEnableCrop(config.allowCrop) // 是否裁剪
+            .withAspectRatio(1, 1) // 裁剪比例 如16:9 3:2 3:4 1:1 可自定义
+//            .freeStyleCropEnabled(false) // 裁剪框是否可以拖拽
+//            .circleDimmedLayer(false) // 是否圆形裁剪
+//            .showCropGrid(false) // 是否显示裁剪矩形网格 圆形裁剪时建议设为false
+            .isCompress(false) // 是否压缩
+//            .compressQuality(80) // 图片压缩后输出质量 0 ~ 100
+            .maxVideoSelectNum(config.maxImageCount) // 视频最大选择数量
+            .videoMaxSecond(config.videoMaxDuration) // 查询多少秒以内的视频
+            .recordVideoSecond(config.videoMaxDuration) // 录制视频秒数
+//            .videoQuality(1) // 视频录制的质量 0 or 1
+            .cutOutQuality(100) // 裁剪输出质量
+            .minimumCompressSize(100) // 小于多少kb的图片不压缩
             .forResult(REQUEST_CODE_CHOOSE_VIDEO_FROM_GALLERY);
   }
 
@@ -393,66 +387,30 @@ public class ImagePickerDelegate
 //    activity.startActivityForResult(pickImageIntent, REQUEST_CODE_CHOOSE_IMAGE_FROM_GALLERY);
 
 
-    int maxImageCount = 1;
-    if (methodCall != null && methodCall.argument("maxImageCount") != null) {
-      maxImageCount = methodCall.argument("maxImageCount");
-    }
-    boolean allowCrop = false;
-    if (methodCall != null && methodCall.argument("allowCrop") != null) {
-      allowCrop = methodCall.argument("allowCrop");
-    }
-
-    // 移除GIF
-    Set<MimeType> mimeTypes = new HashSet<>();
-    for (MimeType mimeType : MimeType.ofImage()) {
-      if (!MimeType.isGif(mimeType.toString())) {
-        mimeTypes.add(mimeType);
-      }
-    }
-    Matisse.from(activity)
-            .choose(mimeTypes)
-            .countable(true)
-            .maxSelectable(maxImageCount)
-//            .gridExpectedSize(getResources().getDimensionPixelSize(R.dimen.grid_expected_size))
-//            .restrictOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED)
-            .thumbnailScale(0.85f)
-            .imageEngine(new GlideEngine())
-//            .capture(true)
-//            .captureStrategy(new CaptureStrategy(true, "com.xiamijun.image_picker_controller_example.flutter.image_provider"))
-            .showPreview(true)
+    PickerConfiguration config = PickerConfiguration.fromMap((Map) methodCall.arguments());
+//    Log.d("config===", "===" + config);
+    PictureSelector.create(activity)
+            .openGallery(PictureMimeType.ofImage())
+            .imageEngine(GlideEngine.createGlideEngine())
+            .isGif(false) // 是否显示GIF图片
+            .isAndroidQTransform(true) // 是否需要处理Android Q 拷贝至应用沙盒的操作，只针对compress(false); && .isEnableCrop(false);有效,默认处理
+            .maxSelectNum(config.maxImageCount) // 最大图片选择数量
+            .isOriginalImageControl(config.allowPickingOriginalPhoto) // 是否显示原图控制按钮，如果设置为true则用户可以自由选择是否使用原图，压缩、裁剪功能将会失效
+            .isCamera(config.allowTakePicture) // 是否显示拍照按钮
+            .isEnableCrop(config.allowCrop) // 是否裁剪
+            .withAspectRatio(1, 1) // 裁剪比例 如16:9 3:2 3:4 1:1 可自定义
+//            .freeStyleCropEnabled(false) // 裁剪框是否可以拖拽
+//            .circleDimmedLayer(false) // 是否圆形裁剪
+//            .showCropGrid(false) // 是否显示裁剪矩形网格 圆形裁剪时建议设为false
+            .isCompress(false) // 是否压缩
+//            .compressQuality(80) // 图片压缩后输出质量 0 ~ 100
+            .maxVideoSelectNum(config.maxImageCount) // 视频最大选择数量
+            .videoMaxSecond(config.videoMaxDuration) // 查询多少秒以内的视频
+            .recordVideoSecond(config.videoMaxDuration) // 录制视频秒数
+//            .videoQuality(1) // 视频录制的质量 0 or 1
+            .cutOutQuality(100) // 裁剪输出质量
+            .minimumCompressSize(100) // 小于多少kb的图片不压缩
             .forResult(REQUEST_CODE_CHOOSE_IMAGE_FROM_GALLERY);
-  }
-
-  // 单选图片，支持裁剪
-  public void chooseSingleImageFromGallery(MethodCall methodCall, MethodChannel.Result result) {
-    if (!setPendingMethodCallAndResult(methodCall, result)) {
-      finishWithAlreadyActiveError(result);
-      return;
-    }
-
-    if (!permissionManager.isPermissionGranted(Manifest.permission.READ_EXTERNAL_STORAGE)) {
-      permissionManager.askForPermission(
-              Manifest.permission.READ_EXTERNAL_STORAGE, REQUEST_EXTERNAL_IMAGE_STORAGE_PERMISSION);
-      return;
-    }
-
-    launchPickSingleImageFromGalleryIntent();
-  }
-
-  // 单选照片
-  private void launchPickSingleImageFromGalleryIntent() {
-    Intent pickImageIntent = new Intent(Intent.ACTION_GET_CONTENT);
-    pickImageIntent.setType("image/*");
-
-    activity.startActivityForResult(pickImageIntent, REQUEST_CODE_CHOOSE_SINGLE_IMAGE_FROM_GALLERY);
-
-//    // 移除GIF
-//    Set<MimeType> mimeTypes = new HashSet<>();
-//    for (MimeType mimeType : MimeType.ofImage()) {
-//      if (!MimeType.isGif(mimeType.toString())) {
-//        mimeTypes.add(mimeType);
-//      }
-//    }
   }
 
   public void takeImageWithCamera(MethodCall methodCall, MethodChannel.Result result) {
@@ -490,14 +448,32 @@ public class ImagePickerDelegate
       return;
     }
 
-    File imageFile = createTemporaryWritableImageFile();
-    pendingCameraMediaUri = Uri.parse("file:" + imageFile.getAbsolutePath());
 
-    Uri imageUri = fileUriResolver.resolveFileProviderUriForFile(fileProviderName, imageFile);
-    intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
-    grantUriPermissions(intent, imageUri);
-
-    activity.startActivityForResult(intent, REQUEST_CODE_TAKE_IMAGE_WITH_CAMERA);
+    PickerConfiguration config = PickerConfiguration.fromMap((Map) methodCall.arguments());
+//    Log.d("config===", "===" + config);
+    // 单独拍照
+    PictureSelector.create(activity)
+            .openCamera(PictureMimeType.ofImage())
+            .imageEngine(GlideEngine.createGlideEngine())
+            .isGif(false) // 是否显示GIF图片
+            .isAndroidQTransform(true) // 是否需要处理Android Q 拷贝至应用沙盒的操作，只针对compress(false); && .isEnableCrop(false);有效,默认处理
+            .maxSelectNum(config.maxImageCount) // 最大图片选择数量
+            .isOriginalImageControl(config.allowPickingOriginalPhoto) // 是否显示原图控制按钮，如果设置为true则用户可以自由选择是否使用原图，压缩、裁剪功能将会失效
+            .isCamera(config.allowTakePicture) // 是否显示拍照按钮
+            .isEnableCrop(config.allowCrop) // 是否裁剪
+            .withAspectRatio(1, 1) // 裁剪比例 如16:9 3:2 3:4 1:1 可自定义
+//            .freeStyleCropEnabled(false) // 裁剪框是否可以拖拽
+//            .circleDimmedLayer(false) // 是否圆形裁剪
+//            .showCropGrid(false) // 是否显示裁剪矩形网格 圆形裁剪时建议设为false
+            .isCompress(false) // 是否压缩
+//            .compressQuality(80) // 图片压缩后输出质量 0 ~ 100
+            .maxVideoSelectNum(config.maxImageCount) // 视频最大选择数量
+            .videoMaxSecond(config.videoMaxDuration) // 查询多少秒以内的视频
+            .recordVideoSecond(config.videoMaxDuration) // 录制视频秒数
+//            .videoQuality(1) // 视频录制的质量 0 or 1
+            .cutOutQuality(100) // 裁剪输出质量
+            .minimumCompressSize(100) // 小于多少kb的图片不压缩
+            .forResult(REQUEST_CODE_TAKE_IMAGE_WITH_CAMERA);
   }
 
   private File createTemporaryWritableImageFile() {
@@ -587,21 +563,14 @@ public class ImagePickerDelegate
       case REQUEST_CODE_CHOOSE_IMAGE_FROM_GALLERY:
         handleChooseImageResult(resultCode, data);
         break;
-      case REQUEST_CODE_CHOOSE_SINGLE_IMAGE_FROM_GALLERY:
-        // 单选图片
-        handleChooseSingleImageResult(resultCode, data);
-        break;
       case REQUEST_CODE_TAKE_IMAGE_WITH_CAMERA:
-        handleCaptureImageResult(resultCode);
+        handleCaptureImageResult(resultCode, data);
         break;
       case REQUEST_CODE_CHOOSE_VIDEO_FROM_GALLERY:
         handleChooseVideoResult(resultCode, data);
         break;
       case REQUEST_CODE_TAKE_VIDEO_WITH_CAMERA:
         handleCaptureVideoResult(resultCode);
-        break;
-      case PICTURE_CROP_CODE:
-
         break;
       default:
         return false;
@@ -615,40 +584,13 @@ public class ImagePickerDelegate
 //      String path = fileUtils.getPathFromUri(activity, data.getData());
 //      handleImageResult(path, false);
 
-      List<String> paths = Matisse.obtainPathResult(data);
-      Log.i("===choose image result", "==========paths: " + paths);
-      handleImageResults(paths, false);
+        List<LocalMedia> selectList = PictureSelector.obtainMultipleResult(data);
+        handleImageResults(selectList);
       return;
     }
 
     // User cancelled choosing a picture.
-    finishWithSuccess(null);
-  }
-
-  private void handleChooseSingleImageResult(int resultCode, Intent data) {
-    if (resultCode == Activity.RESULT_OK && data != null) {
-      List<String> paths = Matisse.obtainPathResult(data);
-      String path = paths.get(0);
-
-      boolean allowCrop = false;
-      if (methodCall != null && methodCall.argument("allowCrop") != null) {
-        allowCrop = methodCall.argument("allowCrop");
-      }
-      if (allowCrop) {
-        Uri inImageUri = null;
-        File cropFile = new File(path);
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
-          inImageUri = Uri.fromFile(cropFile);
-        } else {
-          //Android 7.0系统开始 使用本地真实的Uri路径不安全,使用FileProvider封装共享Uri
-          inImageUri = FileProvider.getUriForFile(activity, activity.getPackageName() + ".fileprovider", cropFile);
-        }
-
-      } else {
-        finishWithSuccess(path);
-      }
-    }
-
+    finishWithSuccessPaths(null);
   }
 
   private void handleChooseVideoResult(int resultCode, Intent data) {
@@ -657,33 +599,27 @@ public class ImagePickerDelegate
 //      handleVideoResult(path);
 
 
-      List<String> paths = Matisse.obtainPathResult(data);
-      Log.i("===choose video result", "==========paths: " + paths);
-      handleVideoResult(paths.get(0));
+      List<LocalMedia> selectList = PictureSelector.obtainMultipleResult(data);
+      handleVideoResults(selectList);
+
       return;
     }
 
     // User cancelled choosing a picture.
-    finishWithSuccess(null);
+    finishWithSuccessPaths(null);
   }
 
-  private void handleCaptureImageResult(int resultCode) {
-    if (resultCode == Activity.RESULT_OK) {
-      fileUriResolver.getFullImagePath(
-          pendingCameraMediaUri != null
-              ? pendingCameraMediaUri
-              : Uri.parse(cache.retrievePendingCameraMediaUriPath()),
-          new OnPathReadyListener() {
-            @Override
-            public void onPathReady(String path) {
-              handleImageResult(path, true);
-            }
-          });
+  private void handleCaptureImageResult(int resultCode, Intent data) {
+    if (resultCode == Activity.RESULT_OK && data != null) {
+      // 处理拍摄照片结果
+
+      List<LocalMedia> selectList = PictureSelector.obtainMultipleResult(data);
+      handleImageResults(selectList);
       return;
     }
 
     // User cancelled taking a picture.
-    finishWithSuccess(null);
+    finishWithSuccessPaths(null);
   }
 
   private void handleCaptureVideoResult(int resultCode) {
@@ -695,38 +631,14 @@ public class ImagePickerDelegate
           new OnPathReadyListener() {
             @Override
             public void onPathReady(String path) {
-              handleVideoResult(path);
+//              handleVideoResult(path);
             }
           });
       return;
     }
 
     // User cancelled taking a picture.
-    finishWithSuccess(null);
-  }
-
-  private void handleImageResult(String path, boolean shouldDeleteOriginalIfScaled) {
-    if (methodCall != null) {
-      Double maxWidth = methodCall.argument("maxWidth");
-      Double maxHeight = methodCall.argument("maxHeight");
-      Integer imageQuality = methodCall.argument("imageQuality");
-
-      String finalImagePath =
-          imageResizer.resizeImageIfNeeded(path, maxWidth, maxHeight, imageQuality);
-
-      finishWithSuccess(finalImagePath);
-
-      //delete original file if scaled
-      if (finalImagePath != null && !finalImagePath.equals(path) && shouldDeleteOriginalIfScaled) {
-        new File(path).delete();
-      }
-    } else {
-      finishWithSuccess(path);
-    }
-  }
-
-  private void handleVideoResult(String path) {
-    finishWithSuccess(path);
+    finishWithSuccessPaths(null);
   }
 
   private boolean setPendingMethodCallAndResult(
@@ -742,15 +654,6 @@ public class ImagePickerDelegate
     cache.clear();
 
     return true;
-  }
-
-  private void finishWithSuccess(String imagePath) {
-    if (pendingResult == null) {
-      cache.saveResult(imagePath, null, null);
-      return;
-    }
-    pendingResult.success(imagePath);
-    clearMethodCallAndResult();
   }
 
   private void finishWithAlreadyActiveError(MethodChannel.Result result) {
@@ -783,46 +686,51 @@ public class ImagePickerDelegate
     }
   }
 
+  // 新增
+  private void handleImageResults(List<LocalMedia> mediaList) {
+    Log.i("===handleImageResults", "====准备开始遍历======paths: " + mediaList);
 
-  // 新增，用于处理Matisse返回的路径数组
-  private void handleImageResults(List<String> paths, boolean shouldDeleteOriginalIfScaled) {
-    Log.i("===handleImageResults", "====准备开始遍历======paths: " + paths);
 
-    if (methodCall != null) {
-      Double maxWidth = methodCall.argument("maxWidth");
-      Double maxHeight = methodCall.argument("maxHeight");
-      Integer imageQuality = methodCall.argument("imageQuality");
-
-      List<String> outPaths = new ArrayList();
-      for (String path : paths) {
-        String finalImagePath =
-                imageResizer.resizeImageIfNeeded(path, maxWidth, maxHeight, imageQuality);
-        Log.i("===handleImageResults", "=====正在遍历=====path: " + path);
-        outPaths.add(finalImagePath);
-
-        //delete original file if scaled
-        if (finalImagePath != null && !finalImagePath.equals(path) && shouldDeleteOriginalIfScaled) {
-          new File(path).delete();
-        }
+    List<String> paths = new ArrayList<>();
+    for (LocalMedia media : mediaList) {
+      String path = media.getPath();
+      if (media.isCompressed()) {
+        path = media.getCompressPath();
+      } else if (media.isCut()) {
+        path = media.getCutPath();
+      } else if (media.isOriginal()) {
+        path = media.getOriginalPath();
+      } else if (media.getAndroidQToPath() != null) {
+        path = media.getAndroidQToPath();
       }
-      Log.i("===handleImageResults", "=====遍历完成=====outPaths: " + outPaths);
-
-      finishWithSuccessPaths(outPaths);
-
-    } else {
-      finishWithSuccessPaths(paths);
+      Log.i("选择照片", "输出的路径==" + path);
+      paths.add(path);
+//      Log.i("选择照片", "是否压缩:" + media.isCompressed());
+//      Log.i("选择照片", "压缩:" + media.getCompressPath());
+//      Log.i("选择照片", "原图:" + media.getPath());
+//      Log.i("选择照片", "是否裁剪:" + media.isCut());
+//      Log.i("选择照片", "裁剪:" + media.getCutPath());
+//      Log.i("选择照片", "是否开启原图:" + media.isOriginal());
+//      Log.i("选择照片", "原图路径:" + media.getOriginalPath());
+//      Log.i("选择照片", "Android Q 特有Path:" + media.getAndroidQToPath());
+//      Log.i("选择照片", "宽高: " + media.getWidth() + "x" + media.getHeight());
+//      Log.i("选择照片", "Size: " + media.getSize());
     }
+    finishWithSuccessPaths(paths);
   }
 
   // 新增，用于处理Matisse返回的path数组
   private void finishWithSuccessPaths(List<String> imagePaths) {
-    Log.i("=finishWithSuccessPaths", "=====准备开始判断=====imagePaths: " + imagePaths + "===pendingResult: " + pendingResult);
+//    if (imagePaths == null) {
+//      return;
+//    }
+//    Log.i("=finishWithSuccessPaths", "=====准备开始判断=====imagePaths: " + imagePaths + "===pendingResult: " + pendingResult);
 
     if (pendingResult == null) {
-      Log.i("=finishWithSuccessPaths", "=====准备开始遍历=====imagePaths: " + imagePaths);
+//      Log.i("=finishWithSuccessPaths", "=====准备开始遍历=====imagePaths: " + imagePaths);
 
       for (String imagePath: imagePaths) {
-        Log.i("=finishWithSuccessPaths", "=====正在遍历=====imagePath: " + imagePath);
+//        Log.i("=finishWithSuccessPaths", "=====正在遍历=====imagePath: " + imagePath);
 
         cache.saveResult(imagePath, null, null);
       }
@@ -834,38 +742,59 @@ public class ImagePickerDelegate
     clearMethodCallAndResult();
   }
 
+  // 新增
+  private void handleVideoResults(List<LocalMedia> mediaList) {
+    Log.i("===handleImageResults", "====准备开始遍历======paths: " + mediaList);
 
-  /**
-   * 裁剪图片
-   */
-  private void cropPicture(Uri pictureUri) {
 
-    outImageUri = Uri.fromFile(new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/" + System.currentTimeMillis() + ".jpg"));
+    List<Map> paths = new ArrayList<Map>();
+    for (LocalMedia media : mediaList) {
+      String path = media.getPath();
+      if (media.isCompressed()) {
+        path = media.getCompressPath();
+      } else if (media.isCut()) {
+        path = media.getCutPath();
+      } else if (media.isOriginal()) {
+        path = media.getOriginalPath();
+      } else if (media.getAndroidQToPath() != null) {
+        path = media.getAndroidQToPath();
+      }
+      Log.i("选择视频", "输出的路径==" + path);
+      Map asset = new HashMap();
+      asset.put("videoPath", path);
+      // TODO: 视频封面
+      asset.put("coverPath", "");
+      paths.add(asset);
+//      Log.i("选择照片", "是否压缩:" + media.isCompressed());
+//      Log.i("选择照片", "压缩:" + media.getCompressPath());
+//      Log.i("选择照片", "原图:" + media.getPath());
+//      Log.i("选择照片", "是否裁剪:" + media.isCut());
+//      Log.i("选择照片", "裁剪:" + media.getCutPath());
+//      Log.i("选择照片", "是否开启原图:" + media.isOriginal());
+//      Log.i("选择照片", "原图路径:" + media.getOriginalPath());
+//      Log.i("选择照片", "Android Q 特有Path:" + media.getAndroidQToPath());
+//      Log.i("选择照片", "宽高: " + media.getWidth() + "x" + media.getHeight());
+//      Log.i("选择照片", "Size: " + media.getSize());
+    }
+    finishWithSuccessVideo(paths);
+  }
 
-    Intent cropIntent = new Intent("com.android.camera.action.CROP");
-    cropIntent.setDataAndType(pictureUri, "image/*");//7.0以上 输入的uri需要是provider提供的
-    // 开启裁剪：打开的Intent所显示的View可裁剪
-    cropIntent.putExtra("crop", "true");
-    // 裁剪宽高比
-    cropIntent.putExtra("aspectX", 1000);
-    cropIntent.putExtra("aspectY", 1001);
-    // 裁剪输出大小
-    cropIntent.putExtra("outputX", 400);
-    cropIntent.putExtra("outputY", 400);
-    cropIntent.putExtra("scale", true);
-    /**
-     * return-data
-     * 这个属性决定onActivityResult 中接收到的是什么数据类型，
-     * true data将会返回一个bitmap
-     * false，则会将图片保存到本地并将我们指定的对应的uri。
-     */
-    cropIntent.putExtra("return-data", false);
-    // 当 return-data 为 false 的时候需要设置输出的uri地址
-    cropIntent.putExtra(MediaStore.EXTRA_OUTPUT, outImageUri);//输出的uri为普通的uri，通过provider提供的uri会出现无法保存的错误
-    // 图片输出格式
-    cropIntent.putExtra("outputFormat", Bitmap.CompressFormat.JPEG.toString());
-    cropIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);//不加会出现无法加载此图片的错误
-    cropIntent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);// 这两句是在7.0以上版本当targeVersion大于23时需要
-    activity.startActivityForResult(cropIntent, PICTURE_CROP_CODE);
+  // 新增，用于处理Matisse返回的path数组
+  private void finishWithSuccessVideo(List<Map> videoAssets) {
+//    if (videoAssets == null) {
+//      return;
+//    }
+
+    if (pendingResult == null) {
+//      for (String imagePath: imagePaths) {
+////        Log.i("=finishWithSuccessPaths", "=====正在遍历=====imagePath: " + imagePath);
+//
+//        cache.saveResult(imagePath, null, null);
+//      }
+      return;
+    }
+
+    pendingResult.success(videoAssets);
+    clearMethodCallAndResult();
   }
 }

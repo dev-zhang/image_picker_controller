@@ -4,7 +4,7 @@
    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
 
-    <application>
+    <!-- <application>
         <provider
             android:name="com.xiamijun.image_picker_controller.ImagePickerFileProvider"
             android:authorities="${applicationId}.flutter.image_provider"
@@ -14,5 +14,5 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/flutter_image_picker_file_paths"/>
         </provider>
-    </application>
+    </application> -->
 </manifest>

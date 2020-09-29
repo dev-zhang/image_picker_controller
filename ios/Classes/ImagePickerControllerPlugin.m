@@ -2,11 +2,10 @@
 #import "TZImagePickerController.h"
 #import <Photos/Photos.h>
 #import <MobileCoreServices/MobileCoreServices.h>
+#import "PickerConfiguration.h"
 
 static NSString *kPickImageMethod = @"pickImage";
 static NSString *kPickVideoMethod = @"pickVideo";
-// 选择单个图片
-static NSString *kPickSingleImageMethod = @"pick_single_image";
 // 拍摄图片
 static NSString *kTakeImageMethod = @"take_image";
 
@@ -15,7 +14,7 @@ static NSString *kTakeImageMethod = @"take_image";
 @property(nonatomic, copy) FlutterResult flutterResult;
 @property(nonatomic, strong) FlutterMethodCall *flutterCall;
 @property(nonatomic, assign) NSTimeInterval videoMaxDuration;
-@property(nonatomic, assign) BOOL isSinglePickMode;
+
 @property(nonatomic, strong) UIImagePickerController *imagePickerVc;
 @property(nonatomic, strong) CLLocation *location;
 
@@ -34,18 +33,13 @@ static NSString *kTakeImageMethod = @"take_image";
 - (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
     self.flutterResult = result;
     self.flutterCall = call;
-    self.isSinglePickMode = false;
+    
     if ([kPickImageMethod isEqualToString:call.method]) {
         [self pickImages:call];
     } else if ([kPickVideoMethod isEqualToString:call.method]) {
         [self pickVideo:call];
-    } else if ([kPickSingleImageMethod isEqualToString:call.method]) {
-        // 选择单个图片
-        self.isSinglePickMode = true;
-        [self pickImages:call];
     } else if ([kTakeImageMethod isEqualToString:call.method]) {
         // 拍摄照片
-        self.isSinglePickMode = true;
         [self takePhoto];
     } else {
         result(FlutterMethodNotImplemented);
@@ -53,21 +47,18 @@ static NSString *kTakeImageMethod = @"take_image";
 }
 
 - (void)pickImages:(FlutterMethodCall *)call {
-    int maxImageCount = 1;
-    if (call.arguments != nil && call.arguments[@"maxImageCount"] != nil) {
-        maxImageCount = [call.arguments[@"maxImageCount"] intValue];
-    }
+    PickerConfiguration *config = [PickerConfiguration fromDictionary:call.arguments];
     
-    TZImagePickerController *imagePickerVC = [[TZImagePickerController alloc] initWithMaxImagesCount:maxImageCount delegate:self];
+    TZImagePickerController *imagePickerVC = [[TZImagePickerController alloc] initWithMaxImagesCount:config.maxImageCount delegate:self];
     imagePickerVC.allowPickingVideo = false;
     imagePickerVC.allowTakeVideo = false;
     
-    BOOL allowCrop = false;
-    if (call.arguments != nil && call.arguments[@"allowCrop"] != nil) {
-        allowCrop = [call.arguments[@"allowCrop"] boolValue];
-    }
-    
-    imagePickerVC.allowCrop = allowCrop;
+    imagePickerVC.allowCrop = config.allowCrop;
+    imagePickerVC.allowPickingOriginalPhoto = config.allowPickingOriginalPhoto;
+    imagePickerVC.allowPickingGif = false;
+    imagePickerVC.allowTakePicture = config.allowTakePicture;
+    imagePickerVC.allowPickingImage = true;
+    imagePickerVC.allowPickingMultipleVideo = false;
     
     if (@available(iOS 13.0, *)) {
         imagePickerVC.modalInPresentation = true;
@@ -79,25 +70,18 @@ static NSString *kTakeImageMethod = @"take_image";
 
 
 - (void)pickVideo:(FlutterMethodCall *)call {
-    int maxImageCount = 1;
-    NSTimeInterval videoMaxDuration = 10 * 60;
-    if (call.arguments != nil && call.arguments[@"videoMaxDuration"] != nil) {
-        videoMaxDuration = [call.arguments[@"videoMaxDuration"] doubleValue];
-    }
-    self.videoMaxDuration = videoMaxDuration;
+    PickerConfiguration *config = [PickerConfiguration fromDictionary:call.arguments];
+    self.videoMaxDuration = config.videoMaxDuration;
     
-    BOOL allowTakeVideo = true;
-    if (call.arguments != nil && call.arguments[@"allowTakePicture"] != nil) {
-        allowTakeVideo = [call.arguments[@"allowTakePicture"] boolValue];
-    }
+    TZImagePickerController *imagePickerVC = [[TZImagePickerController alloc] initWithMaxImagesCount:1 delegate:self];
     
-    
-    TZImagePickerController *imagePickerVC = [[TZImagePickerController alloc] initWithMaxImagesCount:maxImageCount delegate:self];
-    
-    imagePickerVC.videoMaximumDuration = videoMaxDuration;
+    imagePickerVC.videoMaximumDuration = config.videoMaxDuration;
     imagePickerVC.allowPickingImage = false;
-    imagePickerVC.allowTakeVideo = allowTakeVideo;
+    imagePickerVC.allowTakePicture = false;
+    imagePickerVC.allowTakeVideo = config.allowTakeVideo;
     imagePickerVC.allowPickingVideo = true;
+    imagePickerVC.allowPickingMultipleVideo = false;
+    imagePickerVC.allowPickingGif = false;
     [imagePickerVC setUiImagePickerControllerSettingBlock:^(UIImagePickerController *imagePickerController) {
         // 视频拍摄的质量
         imagePickerController.videoQuality = UIImagePickerControllerQualityTypeHigh;
@@ -144,11 +128,8 @@ static NSString *kTakeImageMethod = @"take_image";
         }
         dispatch_group_notify(group, dispatch_get_main_queue(), ^{
             [picker hideProgressHUD];
-            if (self.isSinglePickMode) {
-                self.flutterResult(filePathArray.firstObject);
-            } else {
-                self.flutterResult(filePathArray);
-            }
+            
+            self.flutterResult(filePathArray);
         });
     } else {
         for (UIImage *image in photos) {
@@ -156,11 +137,8 @@ static NSString *kTakeImageMethod = @"take_image";
             [filePathArray addObject: path];
         }
         [picker hideProgressHUD];
-        if (self.isSinglePickMode) {
-            self.flutterResult(filePathArray.firstObject);
-        } else {
-            self.flutterResult(filePathArray);
-        }
+        
+        self.flutterResult(filePathArray);
     }
 }
 
@@ -174,7 +152,7 @@ static NSString *kTakeImageMethod = @"take_image";
             @"coverPath": coverPath,
         };
         [picker hideProgressHUD];
-        self.flutterResult(dict);
+        self.flutterResult(@[dict]);
     } failure:^(NSString *errorMessage, NSError *error) {
         NSLog(@"视频导出到本地失败：%@, %@", errorMessage, error);
         [picker hideProgressHUD];
@@ -264,16 +242,14 @@ static NSString *kTakeImageMethod = @"take_image";
             } else {
                 TZAssetModel *assetModel = [[TZImageManager manager] createModelWithAsset:asset];
                 
-                BOOL allowCrop = false;
-                FlutterMethodCall *call = self.flutterCall;
-                if (call.arguments != nil && call.arguments[@"allowCrop"] != nil) {
-                    allowCrop = [call.arguments[@"allowCrop"] boolValue];
-                }
+                PickerConfiguration *config = [PickerConfiguration fromDictionary:self.flutterCall.arguments];
+                BOOL allowCrop = config.allowCrop;
+                
 
                 if (allowCrop) { // 允许裁剪,去裁剪
                     TZImagePickerController *imagePicker = [[TZImagePickerController alloc] initCropTypeWithAsset:assetModel.asset photo:image completion:^(UIImage *cropImage, id asset) {
                         NSString *path = [self saveImage:cropImage];
-                        self.flutterResult(path);
+                        self.flutterResult(@[path]);
                     }];
                     imagePicker.allowPickingImage = YES;
 //                    UIViewController *topVC = [self topViewController:nil];
@@ -281,7 +257,7 @@ static NSString *kTakeImageMethod = @"take_image";
                     [topVC presentViewController:imagePicker animated:YES completion:nil];
                 } else {
                     NSString *path = [self saveImage:image];
-                    self.flutterResult(path);
+                    self.flutterResult(@[path]);
                 }
             }
         }];

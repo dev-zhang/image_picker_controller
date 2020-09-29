@@ -16,6 +16,7 @@ rootProject.allprojects {
     repositories {
         google()
         jcenter()
+        maven { url 'https://jitpack.io' }
     }
 }
 
@@ -25,11 +26,12 @@ android {
     compileSdkVersion 29
 
     defaultConfig {
-        minSdkVersion 16
+        minSdkVersion 19
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
     lintOptions {
         disable 'InvalidPackage'
+        checkReleaseBuilds false
     }
 
     dependencies {
@@ -39,7 +41,7 @@ android {
 }
 
 dependencies {
-    implementation 'com.zhihu.android:matisse:0.5.3-beta3'
     implementation 'com.github.bumptech.glide:glide:4.11.0'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.11.0'
+    implementation 'com.github.LuckSiege.PictureSelector:picture_library:v2.5.9'
 }

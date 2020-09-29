@@ -98,8 +98,6 @@ public class ImagePickerControllerPlugin
   static final String METHOD_CALL_VIDEO = "pickVideo";
   // 拍摄照片
   static final String METHOD_CALL_TAKE_IMAGE = "take_image";
-  // 选择单个图片
-  static final String METHOD_CALL_PICK_SINGLE_IMAGE = "pick_single_image";
 
   private static final String METHOD_CALL_RETRIEVE = "retrieve";
   private static final int CAMERA_DEVICE_FRONT = 1;
@@ -302,8 +300,6 @@ public class ImagePickerControllerPlugin
         break;
       case METHOD_CALL_VIDEO:
         delegate.chooseVideoFromGallery(call, result);
-        break;
-      case METHOD_CALL_PICK_SINGLE_IMAGE:
         break;
       case METHOD_CALL_TAKE_IMAGE:
         delegate.takeImageWithCamera(call, result);
