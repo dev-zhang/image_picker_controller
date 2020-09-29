@@ -1,13 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="2482d8fd-391a-49bd-ac0a-51edfc583c79" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/example/lib/main.dart" beforeDir="false" afterPath="$PROJECT_DIR$/example/lib/main.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ios/Classes/ImagePickerControllerPlugin.m" beforeDir="false" afterPath="$PROJECT_DIR$/ios/Classes/ImagePickerControllerPlugin.m" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/src/image_picker_configuration.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/src/image_picker_configuration.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/src/picker_controller.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/src/picker_controller.dart" afterDir="false" />
-    </list>
+    <list default="true" id="2482d8fd-391a-49bd-ac0a-51edfc583c79" name="Default Changelist" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -41,9 +35,10 @@
     <servers />
   </component>
   <component name="WindowStateProjectService">
-    <state x="390" y="294" key="com.intellij.ide.util.TipDialog" timestamp="1600104575420">
-      <screen x="0" y="23" width="1440" height="877" />
+    <state x="264" y="-730" key="com.intellij.ide.util.TipDialog" timestamp="1601279491791">
+      <screen x="-256" y="-1057" width="1920" height="1057" />
     </state>
+    <state x="264" y="-730" key="com.intellij.ide.util.TipDialog/0.23.1440.877/-256.-1057.1920.1057@-256.-1057.1920.1057" timestamp="1601279491791" />
     <state x="390" y="294" key="com.intellij.ide.util.TipDialog/0.23.1440.877@0.23.1440.877" timestamp="1600104575420" />
   </component>
 </project>

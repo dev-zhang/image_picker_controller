@@ -10,11 +10,15 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.VisibleForTesting;
 import androidx.lifecycle.DefaultLifecycleObserver;
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleOwner;
+
+import java.io.File;
+
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import io.flutter.embedding.engine.plugins.activity.ActivityAware;
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
@@ -23,7 +27,6 @@ import io.flutter.plugin.common.BinaryMessenger;
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.PluginRegistry;
-import java.io.File;
 
 @SuppressWarnings("deprecation")
 public class ImagePickerControllerPlugin
@@ -97,6 +100,7 @@ public class ImagePickerControllerPlugin
   static final String METHOD_CALL_TAKE_IMAGE = "take_image";
   // 选择单个图片
   static final String METHOD_CALL_PICK_SINGLE_IMAGE = "pick_single_image";
+
   private static final String METHOD_CALL_RETRIEVE = "retrieve";
   private static final int CAMERA_DEVICE_FRONT = 1;
   private static final int CAMERA_DEVICE_REAR = 0;
@@ -294,32 +298,15 @@ public class ImagePickerControllerPlugin
     }
     switch (call.method) {
       case METHOD_CALL_IMAGE:
-//        imageSource = call.argument("source");
-        imageSource = 1;
-        switch (imageSource) {
-          case SOURCE_GALLERY:
-            delegate.chooseImageFromGallery(call, result);
-            break;
-          case SOURCE_CAMERA:
-            delegate.takeImageWithCamera(call, result);
-            break;
-          default:
-            throw new IllegalArgumentException("Invalid image source: " + imageSource);
-        }
+        delegate.chooseImageFromGallery(call, result);
         break;
       case METHOD_CALL_VIDEO:
-//        imageSource = call.argument("source");
-        imageSource = 1;
-        switch (imageSource) {
-          case SOURCE_GALLERY:
-            delegate.chooseVideoFromGallery(call, result);
-            break;
-          case SOURCE_CAMERA:
-            delegate.takeVideoWithCamera(call, result);
-            break;
-          default:
-            throw new IllegalArgumentException("Invalid video source: " + imageSource);
-        }
+        delegate.chooseVideoFromGallery(call, result);
+        break;
+      case METHOD_CALL_PICK_SINGLE_IMAGE:
+        break;
+      case METHOD_CALL_TAKE_IMAGE:
+        delegate.takeImageWithCamera(call, result);
         break;
       case METHOD_CALL_RETRIEVE:
         delegate.retrieveLostImage(result);

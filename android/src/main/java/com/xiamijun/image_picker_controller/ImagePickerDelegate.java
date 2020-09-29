@@ -9,10 +9,12 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.graphics.Bitmap;
 import android.hardware.camera2.CameraCharacteristics;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Log;
 
@@ -23,17 +25,19 @@ import androidx.core.content.FileProvider;
 import com.zhihu.matisse.Matisse;
 import com.zhihu.matisse.MimeType;
 import com.zhihu.matisse.engine.impl.GlideEngine;
-import com.zhihu.matisse.internal.entity.CaptureStrategy;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.PluginRegistry;
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 
 enum CameraDevice {
   REAR,
@@ -81,18 +85,33 @@ enum CameraDevice {
  * <p>C) User cancels picking an image. Finish with null result.
  */
 public class ImagePickerDelegate
-    implements PluginRegistry.ActivityResultListener,
+        implements PluginRegistry.ActivityResultListener,
         PluginRegistry.RequestPermissionsResultListener {
-  @VisibleForTesting static final int REQUEST_CODE_CHOOSE_IMAGE_FROM_GALLERY = 2342;
-  @VisibleForTesting static final int REQUEST_CODE_TAKE_IMAGE_WITH_CAMERA = 2343;
-  @VisibleForTesting static final int REQUEST_EXTERNAL_IMAGE_STORAGE_PERMISSION = 2344;
-  @VisibleForTesting static final int REQUEST_CAMERA_IMAGE_PERMISSION = 2345;
-  @VisibleForTesting static final int REQUEST_CODE_CHOOSE_VIDEO_FROM_GALLERY = 2352;
-  @VisibleForTesting static final int REQUEST_CODE_TAKE_VIDEO_WITH_CAMERA = 2353;
-  @VisibleForTesting static final int REQUEST_EXTERNAL_VIDEO_STORAGE_PERMISSION = 2354;
-  @VisibleForTesting static final int REQUEST_CAMERA_VIDEO_PERMISSION = 2355;
+  @VisibleForTesting
+  static final int REQUEST_CODE_CHOOSE_IMAGE_FROM_GALLERY = 2342;
+  @VisibleForTesting
+  static final int REQUEST_CODE_TAKE_IMAGE_WITH_CAMERA = 2343;
+  @VisibleForTesting
+  static final int REQUEST_EXTERNAL_IMAGE_STORAGE_PERMISSION = 2344;
+  @VisibleForTesting
+  static final int REQUEST_CAMERA_IMAGE_PERMISSION = 2345;
+  @VisibleForTesting
+  static final int REQUEST_CODE_CHOOSE_VIDEO_FROM_GALLERY = 2352;
+  @VisibleForTesting
+  static final int REQUEST_CODE_TAKE_VIDEO_WITH_CAMERA = 2353;
+  @VisibleForTesting
+  static final int REQUEST_EXTERNAL_VIDEO_STORAGE_PERMISSION = 2354;
+  @VisibleForTesting
+  static final int REQUEST_CAMERA_VIDEO_PERMISSION = 2355;
 
-  @VisibleForTesting final String fileProviderName;
+  // 单选照片
+  @VisibleForTesting
+  static final int REQUEST_CODE_CHOOSE_SINGLE_IMAGE_FROM_GALLERY = 2356;
+  // 剪切图片
+  private static final int PICTURE_CROP_CODE = 3000;
+
+  @VisibleForTesting
+  final String fileProviderName;
 
   private final Activity activity;
   private final File externalFilesDirectory;
@@ -103,6 +122,10 @@ public class ImagePickerDelegate
   private final FileUriResolver fileUriResolver;
   private final FileUtils fileUtils;
   private CameraDevice cameraDevice;
+
+  // 图片的保存文件的名字
+  private String fileName = "";
+  private Uri outImageUri;
 
   interface PermissionManager {
     boolean isPermissionGranted(String permissionName);
@@ -374,9 +397,20 @@ public class ImagePickerDelegate
     if (methodCall != null && methodCall.argument("maxImageCount") != null) {
       maxImageCount = methodCall.argument("maxImageCount");
     }
+    boolean allowCrop = false;
+    if (methodCall != null && methodCall.argument("allowCrop") != null) {
+      allowCrop = methodCall.argument("allowCrop");
+    }
 
+    // 移除GIF
+    Set<MimeType> mimeTypes = new HashSet<>();
+    for (MimeType mimeType : MimeType.ofImage()) {
+      if (!MimeType.isGif(mimeType.toString())) {
+        mimeTypes.add(mimeType);
+      }
+    }
     Matisse.from(activity)
-            .choose(MimeType.ofImage())
+            .choose(mimeTypes)
             .countable(true)
             .maxSelectable(maxImageCount)
 //            .gridExpectedSize(getResources().getDimensionPixelSize(R.dimen.grid_expected_size))
@@ -389,6 +423,38 @@ public class ImagePickerDelegate
             .forResult(REQUEST_CODE_CHOOSE_IMAGE_FROM_GALLERY);
   }
 
+  // 单选图片，支持裁剪
+  public void chooseSingleImageFromGallery(MethodCall methodCall, MethodChannel.Result result) {
+    if (!setPendingMethodCallAndResult(methodCall, result)) {
+      finishWithAlreadyActiveError(result);
+      return;
+    }
+
+    if (!permissionManager.isPermissionGranted(Manifest.permission.READ_EXTERNAL_STORAGE)) {
+      permissionManager.askForPermission(
+              Manifest.permission.READ_EXTERNAL_STORAGE, REQUEST_EXTERNAL_IMAGE_STORAGE_PERMISSION);
+      return;
+    }
+
+    launchPickSingleImageFromGalleryIntent();
+  }
+
+  // 单选照片
+  private void launchPickSingleImageFromGalleryIntent() {
+    Intent pickImageIntent = new Intent(Intent.ACTION_GET_CONTENT);
+    pickImageIntent.setType("image/*");
+
+    activity.startActivityForResult(pickImageIntent, REQUEST_CODE_CHOOSE_SINGLE_IMAGE_FROM_GALLERY);
+
+//    // 移除GIF
+//    Set<MimeType> mimeTypes = new HashSet<>();
+//    for (MimeType mimeType : MimeType.ofImage()) {
+//      if (!MimeType.isGif(mimeType.toString())) {
+//        mimeTypes.add(mimeType);
+//      }
+//    }
+  }
+
   public void takeImageWithCamera(MethodCall methodCall, MethodChannel.Result result) {
     if (!setPendingMethodCallAndResult(methodCall, result)) {
       finishWithAlreadyActiveError(result);
@@ -396,9 +462,9 @@ public class ImagePickerDelegate
     }
 
     if (needRequestCameraPermission()
-        && !permissionManager.isPermissionGranted(Manifest.permission.CAMERA)) {
+            && !permissionManager.isPermissionGranted(Manifest.permission.CAMERA)) {
       permissionManager.askForPermission(
-          Manifest.permission.CAMERA, REQUEST_CAMERA_IMAGE_PERMISSION);
+              Manifest.permission.CAMERA, REQUEST_CAMERA_IMAGE_PERMISSION);
       return;
     }
     launchTakeImageWithCameraIntent();
@@ -521,6 +587,10 @@ public class ImagePickerDelegate
       case REQUEST_CODE_CHOOSE_IMAGE_FROM_GALLERY:
         handleChooseImageResult(resultCode, data);
         break;
+      case REQUEST_CODE_CHOOSE_SINGLE_IMAGE_FROM_GALLERY:
+        // 单选图片
+        handleChooseSingleImageResult(resultCode, data);
+        break;
       case REQUEST_CODE_TAKE_IMAGE_WITH_CAMERA:
         handleCaptureImageResult(resultCode);
         break;
@@ -529,6 +599,9 @@ public class ImagePickerDelegate
         break;
       case REQUEST_CODE_TAKE_VIDEO_WITH_CAMERA:
         handleCaptureVideoResult(resultCode);
+        break;
+      case PICTURE_CROP_CODE:
+
         break;
       default:
         return false;
@@ -550,6 +623,32 @@ public class ImagePickerDelegate
 
     // User cancelled choosing a picture.
     finishWithSuccess(null);
+  }
+
+  private void handleChooseSingleImageResult(int resultCode, Intent data) {
+    if (resultCode == Activity.RESULT_OK && data != null) {
+      List<String> paths = Matisse.obtainPathResult(data);
+      String path = paths.get(0);
+
+      boolean allowCrop = false;
+      if (methodCall != null && methodCall.argument("allowCrop") != null) {
+        allowCrop = methodCall.argument("allowCrop");
+      }
+      if (allowCrop) {
+        Uri inImageUri = null;
+        File cropFile = new File(path);
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+          inImageUri = Uri.fromFile(cropFile);
+        } else {
+          //Android 7.0系统开始 使用本地真实的Uri路径不安全,使用FileProvider封装共享Uri
+          inImageUri = FileProvider.getUriForFile(activity, activity.getPackageName() + ".fileprovider", cropFile);
+        }
+
+      } else {
+        finishWithSuccess(path);
+      }
+    }
+
   }
 
   private void handleChooseVideoResult(int resultCode, Intent data) {
@@ -733,5 +832,40 @@ public class ImagePickerDelegate
 
     pendingResult.success(imagePaths);
     clearMethodCallAndResult();
+  }
+
+
+  /**
+   * 裁剪图片
+   */
+  private void cropPicture(Uri pictureUri) {
+
+    outImageUri = Uri.fromFile(new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/" + System.currentTimeMillis() + ".jpg"));
+
+    Intent cropIntent = new Intent("com.android.camera.action.CROP");
+    cropIntent.setDataAndType(pictureUri, "image/*");//7.0以上 输入的uri需要是provider提供的
+    // 开启裁剪：打开的Intent所显示的View可裁剪
+    cropIntent.putExtra("crop", "true");
+    // 裁剪宽高比
+    cropIntent.putExtra("aspectX", 1000);
+    cropIntent.putExtra("aspectY", 1001);
+    // 裁剪输出大小
+    cropIntent.putExtra("outputX", 400);
+    cropIntent.putExtra("outputY", 400);
+    cropIntent.putExtra("scale", true);
+    /**
+     * return-data
+     * 这个属性决定onActivityResult 中接收到的是什么数据类型，
+     * true data将会返回一个bitmap
+     * false，则会将图片保存到本地并将我们指定的对应的uri。
+     */
+    cropIntent.putExtra("return-data", false);
+    // 当 return-data 为 false 的时候需要设置输出的uri地址
+    cropIntent.putExtra(MediaStore.EXTRA_OUTPUT, outImageUri);//输出的uri为普通的uri，通过provider提供的uri会出现无法保存的错误
+    // 图片输出格式
+    cropIntent.putExtra("outputFormat", Bitmap.CompressFormat.JPEG.toString());
+    cropIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);//不加会出现无法加载此图片的错误
+    cropIntent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);// 这两句是在7.0以上版本当targeVersion大于23时需要
+    activity.startActivityForResult(cropIntent, PICTURE_CROP_CODE);
   }
 }
