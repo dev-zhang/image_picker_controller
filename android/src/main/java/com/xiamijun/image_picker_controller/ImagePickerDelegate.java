@@ -398,9 +398,12 @@ public class ImagePickerDelegate
             .isCamera(config.allowTakePicture) // 是否显示拍照按钮
             .isEnableCrop(config.allowCrop) // 是否裁剪
             .withAspectRatio(1, 1) // 裁剪比例 如16:9 3:2 3:4 1:1 可自定义
-//            .freeStyleCropEnabled(false) // 裁剪框是否可以拖拽
+//            .cropImageWideHigh(40, 40) // 裁剪宽高，设置如果大于图片本身宽高则无效
+            .freeStyleCropEnabled(true) // 裁剪框是否可以拖拽
 //            .circleDimmedLayer(false) // 是否圆形裁剪
 //            .showCropGrid(false) // 是否显示裁剪矩形网格 圆形裁剪时建议设为false
+            .scaleEnabled(true) // 裁剪是否可放大缩小图片
+            .rotateEnabled(false) // 裁剪是否可旋转图片
             .isCompress(false) // 是否压缩
 //            .compressQuality(80) // 图片压缩后输出质量 0 ~ 100
             .maxVideoSelectNum(config.maxImageCount) // 视频最大选择数量
@@ -461,9 +464,12 @@ public class ImagePickerDelegate
             .isCamera(config.allowTakePicture) // 是否显示拍照按钮
             .isEnableCrop(config.allowCrop) // 是否裁剪
             .withAspectRatio(1, 1) // 裁剪比例 如16:9 3:2 3:4 1:1 可自定义
-//            .freeStyleCropEnabled(false) // 裁剪框是否可以拖拽
+//            .cropImageWideHigh(100, 100) // 裁剪宽高，设置如果大于图片本身宽高则无效
+            .freeStyleCropEnabled(true) // 裁剪框是否可以拖拽
 //            .circleDimmedLayer(false) // 是否圆形裁剪
 //            .showCropGrid(false) // 是否显示裁剪矩形网格 圆形裁剪时建议设为false
+            .scaleEnabled(true) // 裁剪是否可放大缩小图片
+            .rotateEnabled(false) // 裁剪是否可旋转图片
             .isCompress(false) // 是否压缩
 //            .compressQuality(80) // 图片压缩后输出质量 0 ~ 100
             .maxVideoSelectNum(config.maxImageCount) // 视频最大选择数量
