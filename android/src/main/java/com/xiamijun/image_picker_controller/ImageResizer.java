@@ -53,6 +53,21 @@ class ImageResizer {
     }
   }
 
+  /// 由Bitmap生成图片路径
+  String resizeImageFromBitmap(Bitmap bmp) {
+    if (bmp == null) {
+      return null;
+    }
+
+    try {
+      String imageName = System.currentTimeMillis() + ".jpg";
+      File file = resizedImage(bmp, null, null, null, imageName);
+      return file.getPath();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   private File resizedImage(
       Bitmap bmp, Double maxWidth, Double maxHeight, Integer imageQuality, String outputImageName)
       throws IOException {

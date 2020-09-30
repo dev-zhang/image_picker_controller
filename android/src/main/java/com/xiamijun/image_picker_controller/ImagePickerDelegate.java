@@ -9,7 +9,9 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.graphics.Bitmap;
 import android.hardware.camera2.CameraCharacteristics;
+import android.media.MediaMetadataRetriever;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Build;
@@ -20,15 +22,12 @@ import androidx.annotation.VisibleForTesting;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.FileProvider;
 
-import com.bumptech.glide.Glide;
 import com.luck.picture.lib.PictureSelector;
-import com.luck.picture.lib.config.PictureConfig;
 import com.luck.picture.lib.config.PictureMimeType;
 import com.luck.picture.lib.entity.LocalMedia;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -688,7 +687,7 @@ public class ImagePickerDelegate
 
   // 新增
   private void handleImageResults(List<LocalMedia> mediaList) {
-    Log.i("===handleImageResults", "====准备开始遍历======paths: " + mediaList);
+//    Log.i("===handleImageResults", "====准备开始遍历======paths: " + mediaList);
 
 
     List<String> paths = new ArrayList<>();
@@ -736,35 +735,38 @@ public class ImagePickerDelegate
       }
       return;
     }
-    Log.i("=finishWithSuccessPaths", "=====准备开始执行pendingResult.success=====imagePaths: " + imagePaths);
+//    Log.i("=finishWithSuccessPaths", "=====准备开始执行pendingResult.success=====imagePaths: " + imagePaths);
 
     pendingResult.success(imagePaths);
     clearMethodCallAndResult();
   }
 
   // 新增
-  private void handleVideoResults(List<LocalMedia> mediaList) {
-    Log.i("===handleImageResults", "====准备开始遍历======paths: " + mediaList);
+  private void handleVideoResults(final List<LocalMedia> mediaList) {
+//    Log.i("===handleImageResults", "====准备开始遍历======paths: " + mediaList);
 
-
-    List<Map> paths = new ArrayList<Map>();
-    for (LocalMedia media : mediaList) {
-      String path = media.getPath();
-      if (media.isCompressed()) {
-        path = media.getCompressPath();
-      } else if (media.isCut()) {
-        path = media.getCutPath();
-      } else if (media.isOriginal()) {
-        path = media.getOriginalPath();
-      } else if (media.getAndroidQToPath() != null) {
-        path = media.getAndroidQToPath();
-      }
-      Log.i("选择视频", "输出的路径==" + path);
-      Map asset = new HashMap();
-      asset.put("videoPath", path);
-      // TODO: 视频封面
-      asset.put("coverPath", "");
-      paths.add(asset);
+        final List<Map> paths = new ArrayList<Map>();
+        for (LocalMedia media : mediaList) {
+          String path = media.getPath();
+          if (media.isCompressed()) {
+            path = media.getCompressPath();
+          } else if (media.isCut()) {
+            path = media.getCutPath();
+          } else if (media.isOriginal()) {
+            path = media.getOriginalPath();
+          } else if (media.getAndroidQToPath() != null) {
+            path = media.getAndroidQToPath();
+          }
+          Log.i("选择视频", "输出的路径==" + path);
+          final Map asset = new HashMap();
+          asset.put("videoPath", path);
+          // 视频封面
+          MediaMetadataRetriever mediaRetriever = new MediaMetadataRetriever();
+          mediaRetriever.setDataSource(path);
+          Bitmap bitmap = mediaRetriever.getFrameAtTime();
+          String cover = imageResizer.resizeImageFromBitmap(bitmap);
+          asset.put("coverPath", cover);
+          paths.add(asset);
 //      Log.i("选择照片", "是否压缩:" + media.isCompressed());
 //      Log.i("选择照片", "压缩:" + media.getCompressPath());
 //      Log.i("选择照片", "原图:" + media.getPath());
@@ -775,8 +777,9 @@ public class ImagePickerDelegate
 //      Log.i("选择照片", "Android Q 特有Path:" + media.getAndroidQToPath());
 //      Log.i("选择照片", "宽高: " + media.getWidth() + "x" + media.getHeight());
 //      Log.i("选择照片", "Size: " + media.getSize());
-    }
-    finishWithSuccessVideo(paths);
+
+        }
+        finishWithSuccessVideo(paths);
   }
 
   // 新增，用于处理Matisse返回的path数组
