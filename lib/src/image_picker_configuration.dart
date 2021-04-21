@@ -7,13 +7,7 @@ class ImagePickerConfiguration {
     this.allowTakePicture = true,
     this.videoMaxDuration = 10 * 60,
     this.allowCrop = false,
-  })  : assert(maxImagesCount != null),
-        assert(allowPickingImage != null),
-        assert(allowPickingOriginalPhoto != null),
-        assert(allowPickingVideo != null),
-        assert(allowTakePicture != null),
-        assert(videoMaxDuration != null),
-        assert(allowCrop != null);
+  });
 
   /// Default is 9 / 默认最大可选9张图片
   int maxImagesCount;
@@ -28,7 +22,7 @@ class ImagePickerConfiguration {
 
   /// Default is YES, if set NO, user can't take video.
   /// 默认为YES，如果设置为NO, 用户将不能拍摄视频
-  bool allowTakeVideo;
+  bool? allowTakeVideo;
 
   /// Default is YES, if set NO, user can't picking image.
   /// 默认为YES，如果设置为NO,用户将不能选择发送图片

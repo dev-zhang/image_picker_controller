@@ -15,8 +15,8 @@ class ImagePickerController {
   static const String _takeImageMethod = 'take_image';
 
   /// 相册选择图片
-  static Future<List<File>> pickImage([
-    ImagePickerConfiguration configuration,
+  static Future<List<File>?> pickImage([
+    ImagePickerConfiguration? configuration,
   ]) async {
     configuration ??= ImagePickerConfiguration();
 
@@ -31,7 +31,7 @@ class ImagePickerController {
   }
 
   /// 相册选择视频
-  static Future<List<VideoAssetModel>> pickVideo({
+  static Future<List<VideoAssetModel>?> pickVideo({
     int maxDuration = 10 * 60,
     bool allowTakeVideo = true,
   }) async {
@@ -78,7 +78,7 @@ class ImagePickerController {
   /// 拍摄图片
   ///
   /// [allowCrop]: 允许裁剪
-  static Future<List<File>> takeImage({
+  static Future<List<File>?> takeImage({
     bool allowCrop = true,
   }) async {
     final config = ImagePickerConfiguration();

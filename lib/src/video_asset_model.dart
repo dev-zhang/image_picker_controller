@@ -5,10 +5,10 @@ class VideoAssetModel {
   VideoAssetModel();
 
   /// 视频文件
-  File video;
+  File? video;
 
   /// 视频封面
-  File coverImage;
+  File? coverImage;
 
   factory VideoAssetModel.fromJson(Map<String, dynamic> json) {
     final model = VideoAssetModel();

@@ -27,7 +27,7 @@ class _MyAppState extends State<MyApp> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              FlatButton.icon(
+              TextButton.icon(
                 onPressed: () async {
                   final result = await ImagePickerController.pickImage(
                     ImagePickerConfiguration(
@@ -40,7 +40,7 @@ class _MyAppState extends State<MyApp> {
                 icon: Icon(Icons.add_a_photo),
                 label: Text('选择照片'),
               ),
-              FlatButton.icon(
+              TextButton.icon(
                 onPressed: () async {
                   final models = await ImagePickerController.pickVideo(
                     maxDuration: 16,
@@ -51,7 +51,7 @@ class _MyAppState extends State<MyApp> {
                 icon: Icon(Icons.featured_video),
                 label: Text('pick video'),
               ),
-              FlatButton.icon(
+              TextButton.icon(
                 onPressed: () async {
                   final result = await ImagePickerController.takeImage();
                   print('====拍摄照片: $result');
@@ -59,7 +59,7 @@ class _MyAppState extends State<MyApp> {
                 icon: Icon(Icons.image),
                 label: Text('take image'),
               ),
-              FlatButton.icon(
+              TextButton.icon(
                 onPressed: () async {
                   final result = await ImagePickerController.pickImage(
                     ImagePickerConfiguration(
