@@ -16,7 +16,7 @@
     }
     
     if ([dict objectForKey:@"allowCrop"] != nil) {
-        config.allowCrop = [dict objectForKey:@"allowCrop"];
+        config.allowCrop = [[dict objectForKey:@"allowCrop"] boolValue];
     }
     
     if ([dict objectForKey:@"maxImageCount"] != nil) {
@@ -26,19 +26,19 @@
         config.videoMaxDuration = [[dict objectForKey:@"videoMaxDuration"] doubleValue];
     }
     if ([dict objectForKey:@"allowTakeVideo"] != nil) {
-        config.allowTakeVideo = [dict objectForKey:@"allowTakeVideo"];
+        config.allowTakeVideo = [[dict objectForKey:@"allowTakeVideo"] boolValue];
     }
     if ([dict objectForKey:@"allowTakePicture"] != nil) {
-        config.allowTakePicture = [dict objectForKey:@"allowTakePicture"];
+        config.allowTakePicture = [[dict objectForKey:@"allowTakePicture"] boolValue];
     }
     if ([dict objectForKey:@"allowPickingOriginalPhoto"] != nil) {
-        config.allowPickingOriginalPhoto = [dict objectForKey:@"allowPickingOriginalPhoto"];
+        config.allowPickingOriginalPhoto = [[dict objectForKey:@"allowPickingOriginalPhoto"] boolValue];
     }
     if ([dict objectForKey:@"allowPickingVideo"] != nil) {
-        config.allowPickingVideo = [dict objectForKey:@"allowPickingVideo"];
+        config.allowPickingVideo = [[dict objectForKey:@"allowPickingVideo"] boolValue];
     }
     if ([dict objectForKey:@"allowPickingImage"] != nil) {
-        config.allowPickingImage = [dict objectForKey:@"allowPickingImage"];
+        config.allowPickingImage = [[dict objectForKey:@"allowPickingImage"] boolValue];
     }
     
     return config;

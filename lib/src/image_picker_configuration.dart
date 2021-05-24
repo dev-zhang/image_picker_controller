@@ -7,6 +7,7 @@ class ImagePickerConfiguration {
     this.allowTakePicture = true,
     this.videoMaxDuration = 10 * 60,
     this.allowCrop = false,
+    this.allowTakeVideo = false,
   });
 
   /// Default is 9 / 默认最大可选9张图片
