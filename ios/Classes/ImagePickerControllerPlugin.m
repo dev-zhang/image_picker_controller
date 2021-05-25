@@ -245,19 +245,24 @@ static NSString *kTakeImageMethod = @"take_image";
                 PickerConfiguration *config = [PickerConfiguration fromDictionary:self.flutterCall.arguments];
                 BOOL allowCrop = config.allowCrop;
                 
-
+                
                 if (allowCrop) { // 允许裁剪,去裁剪
                     TZImagePickerController *imagePicker = [[TZImagePickerController alloc] initCropTypeWithAsset:assetModel.asset photo:image completion:^(UIImage *cropImage, id asset) {
                         NSString *path = [self saveImage:cropImage];
                         self.flutterResult(@[path]);
                     }];
                     imagePicker.allowPickingImage = YES;
-//                    UIViewController *topVC = [self topViewController:nil];
+                    //                    UIViewController *topVC = [self topViewController:nil];
                     UIViewController *topVC = [UIApplication sharedApplication].delegate.window.rootViewController;
                     [topVC presentViewController:imagePicker animated:YES completion:nil];
                 } else {
-                    NSString *path = [self saveImage:image];
-                    self.flutterResult(@[path]);
+                    [[TZImageManager manager] getPhotoWithAsset:assetModel.asset completion:^(UIImage *photo, NSDictionary *info, BOOL isDegraded) {
+                        if (photo && !isDegraded) {
+                            // 存储到沙盒，获取路径
+                            NSString *path = [self saveImage:photo];
+                            self.flutterResult(@[path]);
+                        }
+                    }];
                 }
             }
         }];
@@ -330,7 +335,7 @@ static NSString *kTakeImageMethod = @"take_image";
         }
         NSDictionary *titleTextAttributes = [tzBarItem titleTextAttributesForState:UIControlStateNormal];
         [BarItem setTitleTextAttributes:titleTextAttributes forState:UIControlStateNormal];
- 
+        
     }
     return _imagePickerVc;
 }
